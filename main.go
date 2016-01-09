@@ -39,14 +39,23 @@ func main() {
 	if len(os.Args) > 1 {
 		var err error
 		if port, err = strconv.Atoi(os.Args[1]); err != nil {
-			fmt.Println("Args: [port]")
-			fmt.Println("The port should be a number")
+			printUsage()
 			return
+		} else {
+			if len(os.Args) > 2 {
+				rootPath = os.Args[2]
+				if rootStat, err := os.Stat(rootPath); err != nil || !rootStat.IsDir() {
+					printUsage()
+					return
+				}
+			} else {
+				rootPath, _ = os.Getwd()
+			}
 		}
 	} else {
 		port = 80
+		rootPath, _ = os.Getwd()
 	}
-	rootPath, _ = os.Getwd()
 	cacheFile = make(map[string]*FileRecord)
 	server := http.NewServeMux()
 	server.HandleFunc("/", service)
@@ -111,4 +120,10 @@ func reload2Cache(fSize int64, modifiedTime time.Time, file string) {
 	size, _ := fh.Read(content)
 	cacheFile[file].buf = content[:size]
 	cacheFile[file].modifiedTime = modifiedTime
+}
+
+func printUsage() {
+	fmt.Println("Args: [port] [rootDir]")
+	fmt.Println("Port should be a number, default value is 80")
+	fmt.Println("RootDir should be an existed and absolute dir, default value is the working dir")
 }

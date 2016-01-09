@@ -7,4 +7,8 @@
 
 ### Usage
 
-Run the process under the static files folder which will be the root directory.
+```
+Args: [port] [rootDir]
+Port should be a number, default value is 80
+RootDir should be an existed and absolute dir, default value is the working dir
+```
