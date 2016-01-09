@@ -80,20 +80,16 @@ func service(w http.ResponseWriter, req *http.Request) {
 		} else {
 			contentType = ct
 		}
-
 	}
-	fmt.Println(file, rootPath, filepath.Clean(req.RequestURI))
 	var fStatus os.FileInfo
 	var statusErr error
 	if fStatus, statusErr = os.Stat(file); statusErr != nil {
-		fmt.Println("failed")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("404"))
 		return
 	} else if fStatus.IsDir() {
 		file = filepath.Join(file, index)
 		if fStatus, statusErr = os.Stat(file); statusErr != nil {
-			fmt.Println("failed")
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("404"))
 			return
