@@ -18,6 +18,7 @@ type FileRecord struct {
 const (
 	index              = "index.html"
 	defaultContentType = "text/plain"
+	periodSec          = 60
 )
 
 var (
@@ -57,6 +58,7 @@ func main() {
 		rootPath, _ = os.Getwd()
 	}
 	cacheFile = make(map[string]*FileRecord)
+	go PeriodUpdate(periodSec)
 	server := http.NewServeMux()
 	server.HandleFunc("/", service)
 	if err := http.ListenAndServe(":"+strconv.Itoa(port), server); err != nil {
@@ -74,7 +76,6 @@ func service(w http.ResponseWriter, req *http.Request) {
 	suffixIdx := strings.LastIndex(file, ".")
 	if suffixIdx != -1 && suffixIdx < len(file)-1 {
 		suffix := file[suffixIdx+1:]
-		fmt.Println(suffix)
 		if ct, ok := typeMap[suffix]; !ok {
 			contentType = defaultContentType
 		} else {
@@ -84,12 +85,14 @@ func service(w http.ResponseWriter, req *http.Request) {
 	var fStatus os.FileInfo
 	var statusErr error
 	if fStatus, statusErr = os.Stat(file); statusErr != nil {
+		go deleteEntry(file)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("404"))
 		return
 	} else if fStatus.IsDir() {
 		file = filepath.Join(file, index)
 		if fStatus, statusErr = os.Stat(file); statusErr != nil {
+			go deleteEntry(file)
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("404"))
 			return
@@ -107,15 +110,35 @@ func service(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(http.StatusOK)
 	w.Write(cacheFile[file].buf)
+}
 
+func PeriodUpdate(peroidSec int) {
+	ticker := time.NewTicker(time.Duration(int(time.Second) * peroidSec))
+	for _ = range ticker.C {
+		for file, record := range cacheFile {
+			if fStatus, statusErr := os.Stat(file); statusErr != nil {
+				deleteEntry(file)
+			} else {
+				if !fStatus.ModTime().Equal(record.modifiedTime) {
+					go reload2Cache(fStatus.Size(), fStatus.ModTime(), file)
+				}
+			}
+		}
+	}
+}
+
+// delete the corresponding entry in cache
+func deleteEntry(file string) {
+	delete(cacheFile, file)
 }
 
 func reload2Cache(fSize int64, modifiedTime time.Time, file string) {
 	fh, _ := os.Open(file)
+	defer fh.Close()
 	content := make([]byte, fSize)
 	size, _ := fh.Read(content)
-	cacheFile[file].buf = content[:size]
 	cacheFile[file].modifiedTime = modifiedTime
+	cacheFile[file].buf = content[:size]
 }
 
 func printUsage() {
