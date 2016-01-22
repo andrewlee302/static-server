@@ -18,3 +18,4 @@ RootDir should be an existed and absolute dir, default value is the working dir.
 ### TODO
 1. Data consistency.
 2. Checking all files periodically is too much work.
+3. Support the declaration of excluding folders, and forbidden suffixes.
